@@ -1,5 +1,3 @@
-Here is the README.md content as a Markdown file:
-
 # Obsidian Graph Action
 
 **Obsidian Graph Action** is a composite GitHub Action that scans all `.md` (Markdown) files in your repository for `[[wikilink]]` references and generates a PNG graph (named `obsidian-graph.png`) using [Graphviz](https://graphviz.org/).
