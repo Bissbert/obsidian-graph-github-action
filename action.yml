@@ -23,6 +23,11 @@ runs:
       run: |
         pip install graphviz
       shell: bash
+	  
+	- name: Copy graph.py to target repository
+	  run: |
+	    cp $GITHUB_ACTION_PATH/graph.py .
+	  shell: bash
 
     - name: Install graphviz
       run: |
