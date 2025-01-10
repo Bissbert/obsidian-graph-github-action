@@ -1,0 +1,43 @@
+name: "Generate Obsidian Graph"
+description: "Parses Markdown files in a repository to generate an Obsidian-style graph."
+
+# You can define inputs if you want them to be configurable by the user
+inputs:
+  # Example input (optional): which Python version to use
+  python-version:
+    description: "Version of Python to install."
+    required: false
+    default: "3.x"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Install graphviz
+      run: |
+        sudo apt-get update && sudo apt-get install -y graphviz
+
+    - name: Generate Graph
+      run: |
+        python graph.py
+
+    - name: Commit and Push Graph
+      # IMPORTANT: Make sure the workflow/job using this Action has
+      # 'permissions: contents: write' so it can commit & push changes.
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions@github.com"
+        git add obsidian-graph.png
+        git commit -m "Update Obsidian graph"
+        git push
