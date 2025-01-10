@@ -39,12 +39,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate Obsidian Graph
-        uses: <YOUR-GITHUB-USER/obsidian-graph-action>@v1
+        uses: <bissbert/obsidian-graph-action>@v1
         with:
           python-version: "3.x"  # optional, defaults to "3.x"
 ```
 
-Replace <YOUR-GITHUB-USER/obsidian-graph-action> with your GitHub username (or organisation) and repository name, and optionally replace @v1 with the appropriate release tag or commit SHA.
+optionally replace @v1 with the appropriate release tag or commit SHA.
 
 3. Push Your Changes
 
