@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate Obsidian Graph
-        uses: <bissbert/obsidian-graph-action>@v1
+        uses: <bissbert/obsidian-graph-github-action>@v1
         with:
           python-version: "3.x"  # optional, defaults to "3.x"
 ```
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate Obsidian Graph
-        uses: <YOUR-GITHUB-USER/obsidian-graph-action>@v1
+        uses: <bissbert/obsidian-graph-github-action>@v1
         with:
           python-version: "3.9"
 
