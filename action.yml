@@ -21,7 +21,7 @@ runs:
 
     - name: Install dependencies
       run: |
-        pip install -r $GITHUB_WORKSPACE/requirements.txt
+        pip install graphviz
       shell: bash
 
     - name: Install graphviz
