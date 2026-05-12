@@ -1,26 +1,16 @@
-# Obsidian Graph Action
+# obsidian-graph-github-action
 
-**Obsidian Graph Action** is a composite GitHub Action that scans all `.md` (Markdown) files in your repository for `[[wikilink]]` references and generates a PNG graph (named `obsidian-graph.png`) using [Graphviz](https://graphviz.org/).
+![GitHub last commit](https://img.shields.io/github/last-commit/Bissbert/obsidian-graph-github-action)
 
-## How it Works
+> GitHub Action that scans a repository for Obsidian-style `[[wikilinks]]` and commits a rendered PNG graph back to the repo on every push.
 
-1. **Searches for Markdown files:** All `.md` files in your repository are found (including subdirectories).
-2. **Extracts `[[links]]`:** The action parses these files to identify any `[[wikilink]]` references.
-3. **Builds a GraphViz diagram:** Each Markdown file becomes a node, and each `[[link]]` becomes an edge.
-4. **Outputs `obsidian-graph.png`:** A PNG graph is generated and committed back to your repository.
+## Why
 
----
+Obsidian's local graph view is only visible inside the desktop app. This action makes your note graph a first-class CI artefact: every push regenerates `obsidian-graph.png` and commits it back, so the graph is always browsable on GitHub without opening Obsidian. Useful for knowledge bases, wikis, or any Markdown repo where link topology matters.
 
-## Usage
+## Quick start
 
-### 1. Set Up Your Repository
-
-1. Ensure your repository contains Markdown files (`.md`) that you want to graph.
-2. Make sure your repository allows GitHub Actions (in the repo settings).
-
-### 2. Create or Update Your Workflow File
-
-Create a new file at `.github/workflows/generate-graph.yml` in your target repository (or add a job to an existing workflow):
+Create `.github/workflows/generate-graph.yml` in your target repository:
 
 ```yaml
 name: Generate Obsidian Graph
@@ -30,7 +20,6 @@ on:
     branches:
       - main
 
-# IMPORTANT: "contents: write" is needed so the action can commit the generated PNG.
 permissions:
   contents: write
 
@@ -39,70 +28,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate Obsidian Graph
-        uses: <bissbert/obsidian-graph-github-action>@v1
+        uses: Bissbert/obsidian-graph-github-action@v1
         with:
-          python-version: "3.x"  # optional, defaults to "3.x"
+          python-version: "3.x"   # optional, defaults to "3.x"
 ```
 
-optionally replace @v1 with the appropriate release tag or commit SHA.
+After the workflow runs, `obsidian-graph.png` appears in the root of your repository.
 
-3. Push Your Changes
+## How it works
 
-Every time you push changes to the main branch, GitHub Actions will:
-	1.	Check out your repository.
-	2.	Install Python and graphviz.
-	3.	Parse all .md files, generating a visual graph of your notes.
-	4.	Commit and push obsidian-graph.png back to your repository.
+The action is a composite action defined in `action.yml`:
+
+1. Checks out the target repository (`actions/checkout`).
+2. Installs Python (`actions/setup-python`) and the `graphviz` Python package plus the system `graphviz` binary via `apt-get`.
+3. Copies `graph.py` from the action's own directory into the workspace.
+4. `graph.py` walks all `.md` files, extracts `[[wikilink]]` references with a regex, builds a directed graph where each note is a node and each link is an edge, and renders it to `obsidian-graph.png` via the Graphviz `dot` renderer.
+5. Commits and pushes `obsidian-graph.png` back to the branch using the `github-actions[bot]` identity.
+
+Dependencies: Python 3, `graphviz` pip package, `graphviz` system package (installed automatically by the action).
 
 ## Inputs
 
-| Name            | Description                             | Required | Default |
-|-----------------|-----------------------------------------|----------|---------|
-| python-version  | Python version to install (e.g. 3.9, 3.x) | No       | 3.x     |
+| Name | Required | Default | Description |
+|---|---|---|---|
+| `python-version` | No | `3.x` | Python version passed to `actions/setup-python` |
 
 ## Outputs
 
-None. The generated image obsidian-graph.png is committed directly to your repository.
+None. The generated `obsidian-graph.png` is committed directly to the repository.
 
-## Example
+## Status
 
-Here’s a minimal example of how you might wire up this action:
-
-```yaml
-name: Generate Obsidian Graph
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-jobs:
-  generate-graph:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Generate Obsidian Graph
-        uses: <bissbert/obsidian-graph-github-action>@v1
-        with:
-          python-version: "3.9"
-
-```
-
-Run it manually (using the workflow_dispatch event) or whenever you push to main if you prefer. After it completes, look for obsidian-graph.png in your repository.
-
-## Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
-	1.	Fork the repository
-	2.	Create your feature branch (git checkout -b feature/your-feature)
-	3.	Commit your changes (git commit -m 'Add your feature')
-	4.	Push to the branch (git push origin feature/your-feature)
-	5.	Open a Pull Request
+Stable.
 
 ## License
 
-This repository is licensed under the MIT License.
-
-Feel free to adapt the license section if you use a different licence.
-
-Happy graphing! If you have any questions, please open an issue in this repository.
+MIT
