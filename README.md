@@ -1,24 +1,25 @@
 # obsidian-graph-github-action
 
-![GitHub last commit](https://img.shields.io/github/last-commit/Bissbert/obsidian-graph-github-action)
+This GitHub Action scans the Markdown files in a checked-out repository for
+Obsidian-style `[[wikilinks]]`, renders the links as a Graphviz PNG, and commits
+the result as `obsidian-graph.png`. It is useful when a note graph should be
+visible in GitHub without opening the vault in Obsidian.
 
-> GitHub Action that scans a repository for Obsidian-style `[[wikilinks]]` and commits a rendered PNG graph back to the repo on every push.
-
-## Why
-
-Obsidian's local graph view is only visible inside the desktop app. This action makes your note graph a first-class CI artefact: every push regenerates `obsidian-graph.png` and commits it back, so the graph is always browsable on GitHub without opening Obsidian. Useful for knowledge bases, wikis, or any Markdown repo where link topology matters.
+![A sample graph rendered by the action](media/sample-graph.png)
 
 ## Quick start
 
-Create `.github/workflows/generate-graph.yml` in your target repository:
+Create `.github/workflows/generate-graph.yml` in the repository that contains
+the vault:
 
 ```yaml
 name: Generate Obsidian Graph
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths: ["**.md"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -28,39 +29,112 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate Obsidian Graph
-        uses: Bissbert/obsidian-graph-github-action@v1
+        uses: Bissbert/obsidian-graph-github-action@0.1.6
         with:
-          python-version: "3.x"   # optional, defaults to "3.x"
+          python-version: "3.x"
 ```
 
-After the workflow runs, `obsidian-graph.png` appears in the root of your repository.
+The action checks out the target repository itself, so the calling workflow
+does not need a separate checkout step. `contents: write` is required because
+the final action step commits and pushes the PNG. The `paths` filter avoids
+starting another run for the PNG-only commit.
 
-## How it works
+This workflow is written from `action.yml` and was not run end-to-end in this
+pass. The local copy, parse, and render steps were run; see
+[`docs/measurement.md`](docs/measurement.md) for the verification boundary.
 
-The action is a composite action defined in `action.yml`:
+## How a run works
 
-1. Checks out the target repository (`actions/checkout`).
-2. Installs Python (`actions/setup-python`) and the `graphviz` Python package plus the system `graphviz` binary via `apt-get`.
-3. Copies `graph.py` from the action's own directory into the workspace.
-4. `graph.py` walks all `.md` files, extracts `[[wikilink]]` references with a regex, builds a directed graph where each note is a node and each link is an edge, and renders it to `obsidian-graph.png` via the Graphviz `dot` renderer.
-5. Commits and pushes `obsidian-graph.png` back to the branch using the `github-actions[bot]` identity.
+```mermaid
+flowchart LR
+    A["Workflow job"] --> B["actions/checkout@v2<br/>target repository"]
+    B --> C["actions/setup-python@v2<br/>selected Python"]
+    C --> D["pip install graphviz"]
+    D --> E["Copy graph.py<br/>into the workspace"]
+    E --> F["Install Graphviz<br/>with apt-get"]
+    F --> G["Parse every .md file"]
+    G --> H["Build notes and edges"]
+    H --> I["Render obsidian-graph.png"]
+    I --> J["git add, commit, push"]
 
-Dependencies: Python 3, `graphviz` pip package, `graphviz` system package (installed automatically by the action).
+    style I fill:#238636,stroke:#3fb950,color:#fff
+    style J fill:#8250df,stroke:#bc8cff,color:#fff
+```
 
-## Inputs
+The action is a composite action defined in [`action.yml`](action.yml). The
+parser and renderer are described in
+[`docs/graph-generation.md`](docs/graph-generation.md).
+
+## Inputs and outputs
 
 | Name | Required | Default | Description |
-|---|---|---|---|
-| `python-version` | No | `3.x` | Python version passed to `actions/setup-python` |
+|---|:---:|---|---|
+| `python-version` | No | `3.x` | Python version passed to `actions/setup-python`. |
 
-## Outputs
+The action declares no outputs. Its result is the committed
+`obsidian-graph.png` file. The full input, output, and step reference is in
+[`docs/action-reference.md`](docs/action-reference.md); its reference tables
+are produced from [`action.yml`](action.yml) by
+[`tools/action_reference.py`](tools/action_reference.py).
 
-None. The generated `obsidian-graph.png` is committed directly to the repository.
+## Capabilities
 
-## Status
+| Capability | Behaviour |
+|---|---|
+| Markdown discovery | Recursively visits `*.md` below the working directory. |
+| Link detection | Matches the raw text between `[[` and `]]`. |
+| Note identity | Uses each Markdown file's stem as its node name. |
+| Edge identity | Stores each source/target pair in a set, so duplicates collapse. |
+| Rendering | Uses Graphviz `dot` to write a left-to-right PNG. |
+| Publishing | Stages only `obsidian-graph.png`, then commits and pushes it. |
 
-Stable.
+## Measured results
+
+The fixture vaults were run through the action's own `graph.py` in
+temporary vaults. The counts below come from
+`tools/measure.py --sizes 10,50,100 --repeats 1`.
+
+| Fixture | Markdown files | Graph nodes | Unique edges |
+|---|---:|---:|---:|
+| `hero` | 13 | 13 | 24 |
+| `link-forms` | 4 | 9 | 9 |
+| synthetic vault | 100 | 100 | 300 |
+
+The synthetic vault's full run took `3.61 s` and wrote a `5262 KB` PNG at
+`15984x5527` pixels in that run. These are local measurements, not a promise
+about GitHub-hosted runner performance. See
+[`docs/measurement.md`](docs/measurement.md) for commands and edge cases.
+
+## Repository layout
+
+```text
+action.yml                 composite action metadata and steps
+graph.py                   Markdown parser and Graphviz renderer
+requirements.txt           Python dependency used by the action
+media/                     rendered sample graphs used by the docs
+docs/                      component references and measurement notes
+tools/                     fixture, rendering, and measurement scripts
+```
 
 ## License
 
 MIT
+
+## Known limitations
+
+- The parser is a regular expression, not an Obsidian parser. Aliases,
+  headings, block references, embeds, and links inside code spans are kept as
+  raw target text when they match the pattern.
+- Nodes use file stems rather than paths. Two files with the same stem become
+  one graph node, and a link to a note that does not exist still becomes a
+  Graphviz target node.
+- Markdown is read as UTF-8. One file with another encoding stops the graph
+  step before a PNG is written.
+- The workflow installs Graphviz with `apt-get`, so the example requires an
+  Ubuntu runner with passwordless `sudo`. Fork pull requests and protected
+  branches may still reject the push.
+- The commit step has no clean-tree guard. If the generated PNG is unchanged,
+  `git commit` exits non-zero with `nothing to commit` and the job fails.
+- `notes` and `edges` are sets. Their iteration order can vary between
+  processes, so Graphviz layout and PNG bytes can change even when Markdown
+  content does not.
