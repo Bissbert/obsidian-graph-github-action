@@ -42,12 +42,12 @@ def create_graph(notes, edges, output_file):
     dot.attr("edge", color="gray", fontname="Arial")
 
     # Add nodes
-    for note in notes:
+    for note in sorted(notes):
         logger.debug(f"Adding node: {note}")
         dot.node(note)
 
     # Add edges
-    for note_a, note_b in edges:
+    for note_a, note_b in sorted(edges):
         logger.debug(f"Adding edge from '{note_a}' to '{note_b}'")
         dot.edge(note_a, note_b)
 

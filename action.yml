@@ -44,6 +44,10 @@ runs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions@github.com"
         git add obsidian-graph.png
-        git commit -m "Update Obsidian graph"
+        if git diff --cached --quiet -- obsidian-graph.png; then
+          echo "Obsidian graph is unchanged; skipping commit"
+          exit 0
+        fi
+        git commit -m "Update Obsidian graph" -- obsidian-graph.png
         git push
       shell: bash
