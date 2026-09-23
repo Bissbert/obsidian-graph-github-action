@@ -86,7 +86,7 @@ are produced from [`action.yml`](action.yml) by
 | Note identity | Uses each Markdown file's stem as its node name. |
 | Edge identity | Stores each source/target pair in a set, so duplicates collapse. |
 | Rendering | Uses Graphviz `dot` to write a left-to-right PNG. |
-| Publishing | Stages only `obsidian-graph.png`, then commits and pushes it. |
+| Publishing | Stages only `obsidian-graph.png`, then commits and pushes it when it changed. |
 
 ## Measured results
 
@@ -133,8 +133,14 @@ MIT
 - The workflow installs Graphviz with `apt-get`, so the example requires an
   Ubuntu runner with passwordless `sudo`. Fork pull requests and protected
   branches may still reject the push.
-- The commit step has no clean-tree guard. If the generated PNG is unchanged,
-  `git commit` exits non-zero with `nothing to commit` and the job fails.
-- `notes` and `edges` are sets. Their iteration order can vary between
-  processes, so Graphviz layout and PNG bytes can change even when Markdown
-  content does not.
+- The quick-start example pins the action by tag. A tag that no longer resolves
+  in this repository has to be replaced with one that does before the workflow
+  will run.
+
+Two further limitations recorded during the documentation pass have since been
+fixed on the default branch: the commit step had no clean-tree guard, so a run
+producing an identical PNG failed with `nothing to commit`, and `notes` and
+`edges` were handed to Graphviz in set iteration order, so PNG bytes could
+change even when the Markdown did not. The commit step now skips the commit
+when the staged image is unchanged, and both collections are inserted sorted.
+See [`docs/BUGS-FOUND.md`](docs/BUGS-FOUND.md).
