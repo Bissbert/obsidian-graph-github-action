@@ -3,13 +3,22 @@
 # Bugs found
 
 This pass records the existing behaviors below. The proposed source changes
-are examples only; none of them was applied.
+are examples only; none of them was applied during the documentation pass
+itself.
+
+> **Since this pass:** an independent adjudication confirmed the first and
+> third entries and rejected the second. A subsequent fix pass applied both
+> confirmed entries to the default branch: the unguarded commit step in commit
+> `fbbea03`, and the set-order rendering in commit `ba5e711`. The old
+> quick-start tag was left alone. Read the reproductions, the diagram and the
+> example diffs below as the state at the time of the pass, not as the current
+> state of the default branch.
 
 ```mermaid
 flowchart TD
     A["generated PNG"] --> B{"diff from HEAD?"}
     B -- "yes" --> C["commit and push"]
-    B -- "no" --> D["git commit fails"]
+    B -- "no" --> D["git commit fails<br/>(fixed since this pass)"]
     E["set iteration order"] --> F["PNG layout and bytes can vary"]
 
     style C fill:#238636,stroke:#3fb950,color:#fff
