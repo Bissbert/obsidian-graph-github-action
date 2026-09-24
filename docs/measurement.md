@@ -72,8 +72,9 @@ Graphviz layout and rendering; parsing stays under 2 ms.
 ## Same input, same PNG
 
 The demo vaults were rendered twice, with `PYTHONHASHSEED=0` and
-`PYTHONHASHSEED=1`. All four PNGs hash the same per vault (`identical`). See
-bug 2 in [Bugs found](BUGS-FOUND.md).
+`PYTHONHASHSEED=1`. All four PNGs hash the same per vault (`identical`). Before
+[`ba5e711`](https://github.com/Bissbert/obsidian-graph-github-action/commit/ba5e711)
+the layout depended on set iteration order.
 
 ## Edge cases
 
@@ -103,8 +104,9 @@ python3 tools/check_commit_step.py
 The script runs the "Commit and Push Graph" step exactly as `action.yml`
 defines it, in a throwaway repository, with `git push` replaced by `echo PUSH`.
 A new graph is committed and reaches the push; the same graph again exits 0
-with `Obsidian graph is unchanged; skipping commit`. See bug 1 in
-[Bugs found](BUGS-FOUND.md).
+with `Obsidian graph is unchanged; skipping commit`. Before
+[`fbbea03`](https://github.com/Bissbert/obsidian-graph-github-action/commit/fbbea03)
+an unchanged graph made the action fail.
 
 ## Not run
 

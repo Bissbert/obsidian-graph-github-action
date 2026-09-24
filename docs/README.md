@@ -7,4 +7,3 @@
 | [Action reference](action-reference.md) | Inputs, outputs, composite steps, permissions, runner requirements, and failure modes. |
 | [Graph generation](graph-generation.md) | Markdown discovery, link parsing, Graphviz attributes, and parser edge cases. |
 | [Measurement](measurement.md) | The Linux container run behind every number and image. |
-| [Bugs found](BUGS-FOUND.md) | Each bug found, with its reproduction and whether it is fixed. |

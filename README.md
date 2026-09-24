@@ -138,5 +138,4 @@ MIT
   in this repository has to be replaced with one that does before the workflow
   will run.
 
-See [`docs/BUGS-FOUND.md`](docs/BUGS-FOUND.md) for the bugs found so far and
-their fixes.
+Report bugs as [GitHub issues](https://github.com/Bissbert/obsidian-graph-github-action/issues).
