@@ -39,9 +39,9 @@ does not need a separate checkout step. `contents: write` is required because
 the final action step commits and pushes the PNG. The `paths` filter avoids
 starting another run for the PNG-only commit.
 
-This workflow is written from `action.yml` and was not run end-to-end in this
-pass. The local copy, parse, and render steps were run; see
-[`docs/measurement.md`](docs/measurement.md) for the verification boundary.
+This workflow has not been run on a hosted runner. Every step after the
+checkout and Python setup was run in an `ubuntu:24.04` container, with `git push`
+stubbed out; see [`docs/measurement.md`](docs/measurement.md).
 
 ## How a run works
 
@@ -88,10 +88,10 @@ are produced from [`action.yml`](action.yml) by
 | Rendering | Uses Graphviz `dot` to write a left-to-right PNG. |
 | Publishing | Stages only `obsidian-graph.png`, then commits and pushes it when it changed. |
 
-## Measured results
+## Results
 
-The fixture vaults were run through the action's own `graph.py` in
-temporary vaults. The counts below come from
+The fixture vaults were run through the action's own `graph.py` in an
+`ubuntu:24.04` container. The counts below come from
 `tools/measure.py --sizes 10,50,100 --repeats 1`.
 
 | Fixture | Markdown files | Graph nodes | Unique edges |
@@ -100,9 +100,10 @@ temporary vaults. The counts below come from
 | `link-forms` | 4 | 9 | 9 |
 | synthetic vault | 100 | 100 | 300 |
 
-The synthetic vault's full run took `3.61 s` and wrote a `5262 KB` PNG at
-`15984x5527` pixels in that run. These are local measurements, not a promise
-about GitHub-hosted runner performance. See
+The 100-note synthetic vault took `3.89 s` and wrote a `5773 KB` PNG at
+`14842x5147` pixels. That is one run in a Docker Desktop VM, not a promise
+about GitHub-hosted runner performance. Rendering the same vault under two
+different `PYTHONHASHSEED` values gives byte-identical PNGs. See
 [`docs/measurement.md`](docs/measurement.md) for commands and edge cases.
 
 ## Repository layout
@@ -137,10 +138,5 @@ MIT
   in this repository has to be replaced with one that does before the workflow
   will run.
 
-Two further limitations recorded during the documentation pass have since been
-fixed on the default branch: the commit step had no clean-tree guard, so a run
-producing an identical PNG failed with `nothing to commit`, and `notes` and
-`edges` were handed to Graphviz in set iteration order, so PNG bytes could
-change even when the Markdown did not. The commit step now skips the commit
-when the staged image is unchanged, and both collections are inserted sorted.
-See [`docs/BUGS-FOUND.md`](docs/BUGS-FOUND.md).
+See [`docs/BUGS-FOUND.md`](docs/BUGS-FOUND.md) for the bugs found so far and
+their fixes.

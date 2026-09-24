@@ -1,0 +1,105 @@
+
+=== environment
+Linux 6.5.11-linuxkit aarch64
+Ubuntu 24.04.5 LTS
+Python 3.12.3
+graphviz (Python) 0.21
+dot - graphviz version 2.43.0 (0)
+git version 2.43.0
+
+=== tools/action_reference.py
+**Generate Obsidian Graph** - Parses Markdown files in a repository to generate an Obsidian-style graph. Runs as a `composite` action.
+
+## Inputs
+
+| Name | Description | Required | Default |
+|---|---|:--:|---|
+| `python-version` | Version of Python to install. | false | `3.x` |
+
+## Outputs
+
+None. `action.yml` declares no `outputs:` block, so nothing can be
+read with `steps.<id>.outputs.*`. The result is the committed
+`obsidian-graph.png`.
+
+## Steps
+
+| # | Step | Runs |
+|---:|---|---|
+| 1 | Check out repository | `actions/checkout@v2` |
+| 2 | Set up Python | `actions/setup-python@v2` |
+| 3 | Install dependencies | `pip install graphviz` |
+| 4 | Copy graph.py to target repository | `cp $GITHUB_ACTION_PATH/graph.py .` |
+| 5 | Install graphviz | `sudo apt-get update && sudo apt-get install -y graphviz` |
+| 6 | Generate Graph | `python graph.py` |
+| 7 | Commit and Push Graph | `git config user.name "github-actions[bot]"`<br/>`git config user.email "github-actions@github.com"`<br/>`git add obsidian-graph.png`<br/>`if git diff --cached --quiet -- obsidian-graph.png; then`<br/>`echo "Obsidian graph is unchanged; skipping commit"`<br/>`exit 0`<br/>`fi`<br/>`git commit -m "Update Obsidian graph" -- obsidian-graph.png`<br/>`git push` |
+
+
+=== tools/render_media.py
+media/sample-graph.png: 13 notes -> 2196x387 px, 89,602 bytes
+media/link-forms.png: 4 notes -> 514x491 px, 50,685 bytes
+
+=== tools/measure.py --sizes 10,50,100 --repeats 1
+python 3.12.3 on Linux-6.5.11-linuxkit-aarch64-with-glibc2.39
+dot - graphviz version 2.43.0 (0)
+
+Best of 1 runs.
+
+## Demo vaults
+
+| Vault | Files | Nodes | Edges | PNG | Pixels |
+|---|---:|---:|---:|---:|---|
+| `hero` | 13 | 13 | 24 | 87.5 KB | 2196x387 |
+| `link-forms` | 4 | 9 | 9 | 49.5 KB | 514x491 |
+
+## Synthetic vaults, three links per note
+
+| Notes | Nodes | Edges | Parse | Full run | PNG | Pixels |
+|---:|---:|---:|---:|---:|---:|---|
+| 10 | 10 | 30 | 0.3 ms | 0.07 s | 91 KB | 1777x533 |
+| 50 | 50 | 150 | 0.8 ms | 0.63 s | 1323 KB | 6676x2462 |
+| 100 | 100 | 300 | 1.6 ms | 3.89 s | 5773 KB | 14842x5147 |
+
+
+=== tools/edge_cases.py
+| Scenario | Exit | Notes | Edges | PNG | Error |
+|---|---:|---:|---:|---|---|
+| empty vault, no Markdown at all | 0 | 0 | 0 | 114 B, 11x11 px |  |
+| notes in hidden directories | 0 | 3 | 3 | 21,817 B, 575x203 px |  |
+| same stem in two folders | 0 | 3 | 2 | 8,535 B, 230x131 px |  |
+| note linking to itself | 0 | 1 | 1 | 4,428 B, 151x83 px |  |
+| the same link twice in one note | 0 | 2 | 1 | 2,750 B, 203x59 px |  |
+| one file that is not UTF-8 | 1 | - | - | no PNG | UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe9 in position 3: invalid continuation byte |
+| note name with a quote in it | 0 | 2 | 1 | 5,812 B, 290x59 px |  |
+
+=== same vault, two hash seeds: are the PNGs identical?
+705cdccb0e977b6f223e929c8ae5aa19748c8a49ee16065cf037a24b6bea3bd1  seed0/link-forms.png
+a284185461900f59953d86331aac876ed9d19eae2af5598b5e5ce897448c6eaa  seed0/sample-graph.png
+705cdccb0e977b6f223e929c8ae5aa19748c8a49ee16065cf037a24b6bea3bd1  seed1/link-forms.png
+a284185461900f59953d86331aac876ed9d19eae2af5598b5e5ce897448c6eaa  seed1/sample-graph.png
+identical
+
+=== tools/check_commit_step.py
+step from action.yml (git push replaced with echo PUSH):
+   git config user.name "github-actions[bot]"
+   git config user.email "github-actions@github.com"
+   git add obsidian-graph.png
+   if git diff --cached --quiet -- obsidian-graph.png; then
+     echo "Obsidian graph is unchanged; skipping commit"
+     exit 0
+   fi
+   git commit -m "Update Obsidian graph" -- obsidian-graph.png
+   echo PUSH
+graph changed: exit 0
+   [master 597332b] Update Obsidian graph
+    1 file changed, 3 insertions(+)
+    create mode 100644 obsidian-graph.png
+   PUSH
+graph unchanged: exit 0
+   Obsidian graph is unchanged; skipping commit
+commits in the throwaway repo: 2 (init + 1)
+
+=== media
+ 89602 media/sample-graph.png
+ 50685 media/link-forms.png
+140287 total

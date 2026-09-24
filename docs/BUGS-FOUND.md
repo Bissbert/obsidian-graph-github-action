@@ -2,116 +2,71 @@
 
 # Bugs found
 
-This pass records the existing behaviors below. The proposed source changes
-are examples only; none of them was applied during the documentation pass
-itself.
+Both bugs below are fixed on `main`. Each was re-checked in the `ubuntu:24.04`
+container described in [How this was measured](measurement.md).
 
-> **Since this pass:** an independent adjudication confirmed the first and
-> third entries and rejected the second. A subsequent fix pass applied both
-> confirmed entries to the default branch: the unguarded commit step in commit
-> `fbbea03`, and the set-order rendering in commit `ba5e711`. The old
-> quick-start tag was left alone. Read the reproductions, the diagram and the
-> example diffs below as the state at the time of the pass, not as the current
-> state of the default branch.
+| # | Bug | Status |
+|---|---|---|
+| 1 | Unchanged output made the action fail | Fixed in [`fbbea03`](https://github.com/Bissbert/obsidian-graph-github-action/commit/fbbea03) |
+| 2 | PNG layout depended on set iteration order | Fixed in [`ba5e711`](https://github.com/Bissbert/obsidian-graph-github-action/commit/ba5e711) |
 
-```mermaid
-flowchart TD
-    A["generated PNG"] --> B{"diff from HEAD?"}
-    B -- "yes" --> C["commit and push"]
-    B -- "no" --> D["git commit fails<br/>(fixed since this pass)"]
-    E["set iteration order"] --> F["PNG layout and bytes can vary"]
+An old quick-start example used `@v1`, a tag that does not exist. That was a
+documentation error, not a code bug; the README now pins `@0.1.6`.
 
-    style C fill:#238636,stroke:#3fb950,color:#fff
-    style D fill:#da3633,stroke:#f85149,color:#fff
-    style F fill:#d29922,stroke:#d29922,color:#fff
+## 1. Unchanged output made the action fail
+
+**Status:** fixed in [`fbbea03`](https://github.com/Bissbert/obsidian-graph-github-action/commit/fbbea03).
+
+**Location:** `action.yml`, step "Commit and Push Graph".
+
+**What happened:** the step staged `obsidian-graph.png` and always ran
+`git commit`. When the PNG was unchanged, Git printed `nothing to commit,
+working tree clean` and exited 1, and the job failed.
+
+**What changed:** the step now checks `git diff --cached --quiet --
+obsidian-graph.png` first and exits 0 when nothing changed. The commit is also
+limited to the image path.
+
+**Check:** [`tools/check_commit_step.py`](../tools/check_commit_step.py)
+reads the step from `action.yml`, replaces `git push` with `echo PUSH`, and runs
+it twice in a throwaway repository:
+
 ```
-## Unchanged output makes the action fail
+graph changed: exit 0
+   [master f56e395] Update Obsidian graph
+    1 file changed, 3 insertions(+)
+    create mode 100644 obsidian-graph.png
+   PUSH
+graph unchanged: exit 0
+   Obsidian graph is unchanged; skipping commit
+commits in the throwaway repo: 2 (init + 1)
+```
 
-**Location:** `action.yml`, lines 42–48, especially line 47.
+## 2. PNG layout depended on set iteration order
 
-**What happens:** The final step stages `obsidian-graph.png` and always runs
-`git commit`. When the PNG is unchanged, Git reports `nothing to commit,
-working tree clean`, returns exit `1`, and the action stops before `git push`.
+**Status:** fixed in [`ba5e711`](https://github.com/Bissbert/obsidian-graph-github-action/commit/ba5e711).
 
-**How it was reproduced:**
+**Location:** `graph.py`, `create_graph()`.
+
+**What happened:** notes and edges are collected in sets and were handed to
+Graphviz in set iteration order. String hashing is randomized per process, so
+the same vault could produce a different layout and different PNG bytes on
+each run, and the action would commit a new image even when no note changed.
+
+**What changed:** both loops now iterate `sorted(notes)` and `sorted(edges)`.
+
+**Check:** render the demo vaults under two hash seeds and compare:
 
 ```sh
-.docs-pass-venv/bin/python tools/check_commit_step.py
+PYTHONHASHSEED=0 python3 tools/render_media.py --outdir /tmp/seed0
+PYTHONHASHSEED=1 python3 tools/render_media.py --outdir /tmp/seed1
+sha256sum /tmp/seed0/*.png /tmp/seed1/*.png
 ```
 
-The script created a temporary repository. Its changed-image case exited `0`;
-its unchanged-image case exited `1` with the message above.
-
-**Fix I would have made, but did not make:**
-
-```diff
-         git config user.email "github-actions@github.com"
-         git add obsidian-graph.png
-+        git diff --cached --quiet -- obsidian-graph.png && exit 0
-         git commit -m "Update Obsidian graph"
-         git push
 ```
-
-## The old quick-start tag does not resolve
-
-**Location:** Original `README.md`, line 31 in `git show HEAD:README.md`.
-
-**What happens:** The old example used
-`Bissbert/obsidian-graph-github-action@v1`. The remote tag query returned the
-`0.1.x` tags through `0.1.6` and no `v1` tag, so that workflow reference
-cannot resolve.
-
-**How it was reproduced:**
-
-```sh
-git show HEAD:README.md | sed -n '30,33p'
-git ls-remote --tags origin 'refs/tags/v1*'
-```
-
-The README now uses `@0.1.6`, an existing tag observed in the repository's tag
-listing.
-
-**Fix I would have made, but did not make to tracked source:**
-
-```diff
--        uses: Bissbert/obsidian-graph-github-action@v1
-+        uses: Bissbert/obsidian-graph-github-action@0.1.6
-```
-
-This documentation correction is in the new README, which is an allowed
-documentation file.
-
-## PNG layout is sensitive to set iteration order
-
-**Location:** `graph.py`, lines 19–20 and 45–52.
-
-**What happens:** Notes and edges are collected in sets and then handed to
-Graphviz in set iteration order. Separate processes can therefore insert the
-same graph in a different order and produce different PNG bytes and layout
-dimensions.
-
-**How it was reproduced:**
-
-```sh
-PYTHONHASHSEED=0 .docs-pass-venv/bin/python tools/render_media.py --outdir SEED0
-PYTHONHASHSEED=1 .docs-pass-venv/bin/python tools/render_media.py --outdir SEED1
-sha256sum SEED0/sample-graph.png SEED1/sample-graph.png
-```
-
-The actual run produced different hashes. The first sample PNG was
-`1890x479` and the second was `2223x387`, with different file sizes.
-
-**Fix I would have made, but did not make:**
-
-```diff
--    for note in notes:
-+    for note in sorted(notes):
-         logger.debug(f"Adding node: {note}")
-         dot.node(note)
-
-     # Add edges
--    for note_a, note_b in edges:
-+    for note_a, note_b in sorted(edges):
-         logger.debug(f"Adding edge from '{note_a}' to '{note_b}'")
-         dot.edge(note_a, note_b)
+705cdccb0e977b6f223e929c8ae5aa19748c8a49ee16065cf037a24b6bea3bd1  seed0/link-forms.png
+a284185461900f59953d86331aac876ed9d19eae2af5598b5e5ce897448c6eaa  seed0/sample-graph.png
+705cdccb0e977b6f223e929c8ae5aa19748c8a49ee16065cf037a24b6bea3bd1  seed1/link-forms.png
+a284185461900f59953d86331aac876ed9d19eae2af5598b5e5ce897448c6eaa  seed1/sample-graph.png
+identical
 ```
