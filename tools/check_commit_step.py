@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
-"""Reproduce the "Commit and Push Graph" step of action.yml locally.
+"""Run the "Commit and Push Graph" step of action.yml in a throwaway repo.
 
-The step is
-
-    git config user.name "github-actions[bot]"
-    git config user.email "github-actions@github.com"
-    git add obsidian-graph.png
-    git commit -m "Update Obsidian graph"
-    git push
-
-with no `--allow-empty` and no guard. This script builds a throwaway
-repository in a temporary directory, runs everything up to (not including)
-`git push` twice - once with a changed graph, once with an unchanged one -
-and prints the exit code and output of each. It proves what the step does
-when a push produces no diff.
+The step's `run:` script is read from action.yml itself, so this checks the
+step as it is committed. `git push` is replaced with `echo PUSH`, because
+the throwaway repository has no remote. The script then runs the step twice:
+once with a new graph, once with the same graph again, and prints the exit
+code and output of each.
 
 Standard library and `git` only; nothing outside the temporary directory is
 touched.
@@ -25,12 +17,22 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-STEP = """
-git config user.name "github-actions[bot]"
-git config user.email "github-actions@github.com"
-git add obsidian-graph.png
-git commit -m "Update Obsidian graph"
-"""
+REPO = Path(__file__).resolve().parent.parent
+STEP_NAME = "Commit and Push Graph"
+
+
+def read_step(action: Path) -> str:
+    """The `run: |` block of the named step, dedented."""
+    lines = action.read_text().splitlines()
+    start = next(i for i, l in enumerate(lines) if l.strip() == f"- name: {STEP_NAME}")
+    run = next(i for i in range(start, len(lines)) if lines[i].strip() == "run: |")
+    body = []
+    for line in lines[run + 1:]:
+        if line.strip().startswith("shell:"):
+            break
+        body.append(line)
+    indent = min(len(l) - len(l.lstrip()) for l in body if l.strip())
+    return "\n".join(l[indent:] for l in body)
 
 
 def run(command: str, cwd: Path) -> subprocess.CompletedProcess:
@@ -39,22 +41,26 @@ def run(command: str, cwd: Path) -> subprocess.CompletedProcess:
     )
 
 
+def show(label: str, result: subprocess.CompletedProcess) -> None:
+    print(f"{label}: exit {result.returncode}")
+    out = (result.stdout.strip() + "\n" + result.stderr.strip()).strip()
+    print("   " + out.replace("\n", "\n   "))
+
+
 def main() -> None:
+    step = read_step(REPO / "action.yml").replace("git push", "echo PUSH")
+    print("step from action.yml (git push replaced with echo PUSH):")
+    print("   " + step.replace("\n", "\n   "))
     with tempfile.TemporaryDirectory() as tmp:
         repo = Path(tmp)
-        run("git init -q . && git commit -q --allow-empty -m init "
-            "--author='t <t@e>' ", repo)
-        run("git config user.email t@e && git config user.name t", repo)
+        run("git init -q . && git -c user.name=t -c user.email=t@e "
+            "commit -q --allow-empty -m init", repo)
 
         (repo / "obsidian-graph.png").write_bytes(b"\x89PNG\r\n\x1a\n first")
-        first = run(STEP, repo)
-        print(f"graph changed:   exit {first.returncode}")
-        print("   " + first.stdout.strip().replace("\n", "\n   "))
-
-        second = run(STEP, repo)
-        print(f"graph unchanged: exit {second.returncode}")
-        print("   " + (second.stdout.strip() or second.stderr.strip())
-              .replace("\n", "\n   "))
+        show("graph changed", run(step, repo))
+        show("graph unchanged", run(step, repo))
+        commits = run("git rev-list --count HEAD", repo).stdout.strip()
+        print(f"commits in the throwaway repo: {commits} (init + 1)")
 
 
 if __name__ == "__main__":

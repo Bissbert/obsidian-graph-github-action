@@ -87,19 +87,21 @@ flowchart TD
     A["push reaches the workflow"] --> B["graph.py writes PNG"]
     B --> C{"PNG differs from HEAD?"}
     C -- "yes" --> D["git commit succeeds"]
-    C -- "no" --> E["git commit reports nothing to commit"]
+    C -- "no" --> E["step skips the commit<br/>and exits 0"]
     D --> F{"push permitted?"}
     F -- "yes" --> G["PNG is updated"]
     F -- "no" --> H["job fails"]
-    E --> H
 
     style G fill:#238636,stroke:#3fb950,color:#fff
     style H fill:#da3633,stroke:#f85149,color:#fff
 ```
 
+An unchanged PNG prints `Obsidian graph is unchanged; skipping commit` and the
+step succeeds. Before [`fbbea03`](https://github.com/Bissbert/obsidian-graph-github-action/commit/fbbea03)
+it failed with `nothing to commit, working tree clean`.
+
 | Symptom | Cause | Response |
 |---|---|---|
-| `nothing to commit, working tree clean` | The generated PNG is unchanged and the action has no clean-tree guard. | Trigger on Markdown changes with a `paths` filter, or maintain the action separately. |
 | Push permission denied | Missing `contents: write`, a fork token, or a protected branch. | Use a push-capable workflow context and branch policy. |
 | `Unable to resolve action ... @v1` | There is no `v1` tag in the repository tag listing. | Pin an existing tag such as `@0.1.6`. |
 | `UnicodeDecodeError` | A Markdown file is not UTF-8. | Convert the file to UTF-8 before running the action. |
